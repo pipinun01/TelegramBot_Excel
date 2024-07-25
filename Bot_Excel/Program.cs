@@ -48,6 +48,7 @@ namespace ConsoleApp2
             if (update.Type == UpdateType.Message && update.Message!.Type == MessageType.Text)
             {
 
+
                 if (update.Message.Text == "/start")
                 {
                     await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Привет! Отправьте данные, и нажмите кнопку 'Экспорт', чтобы экспортировать в Excel.", replyMarkup: keyboard, cancellationToken: cancellationToken);
