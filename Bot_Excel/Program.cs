@@ -1,5 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
+using System.Data.Common;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -18,7 +19,7 @@ namespace ConsoleApp2
 {
     public class Program
     {
-        private static readonly TelegramBotClient bot = new TelegramBotClient("7297731437:AAERIccwtDZnZnV3sNu2gjEpI5ze5Kq77uk");
+        private static readonly TelegramBotClient bot = new TelegramBotClient("7279322259:AAGNXvPb8jErmk7gqXV1jwxUDDhhvIl61Ng");
         private static CancellationTokenSource cts = new CancellationTokenSource();
         private static readonly List<string> Messages = new List<string>();
 
@@ -37,57 +38,71 @@ namespace ConsoleApp2
         }
         private static async Task HandleUpdateAsync(ITelegramBotClient botClient, Update update, CancellationToken cancellationToken)
         {
-            var keyboard = new ReplyKeyboardMarkup(new[]
-                  {
+            try
+            {
+                var keyboard = new ReplyKeyboardMarkup(new[]
+                                  {
                     new KeyboardButton("Экспорт")
                 })
-            {
-                ResizeKeyboard = true,
-                OneTimeKeyboard = false
-            };
-            if (update.Type == UpdateType.Message && update.Message!.Type == MessageType.Text)
-            {
-
-
-                if (update.Message.Text == "/start")
                 {
-                    await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Привет! Отправьте данные, и нажмите кнопку 'Экспорт', чтобы экспортировать в Excel.", replyMarkup: keyboard, cancellationToken: cancellationToken);
-                }
-                else if (update.Message.Text == "Экспорт")
+                    ResizeKeyboard = true,
+                    OneTimeKeyboard = false
+                };
+                if (update.Type == UpdateType.Message && update.Message!.Type == MessageType.Text)
                 {
-                    await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Данные получены. Нажмите кнопку 'Экспорт', чтобы экспортировать в Excel.", cancellationToken: cancellationToken);
-                    var filePath = GenerateExcelFile();
 
-                    using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+
+                    if (update.Message.Text == "/start")
                     {
-                        var inputOnlineFile = InputFile.FromStream(stream, "data.xlsx");
-                        await botClient.SendDocumentAsync(update.Message.Chat.Id, inputOnlineFile, cancellationToken: cancellationToken);
+                        await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Привет! Отправьте данные, и нажмите кнопку 'Экспорт', чтобы экспортировать в Excel.", replyMarkup: keyboard, cancellationToken: cancellationToken);
+                    }
+                    else if (update.Message.Text == "Экспорт")
+                    {
+                        await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Данные получены. Нажмите кнопку 'Экспорт', чтобы экспортировать в Excel.", cancellationToken: cancellationToken);
+                        var filePath = GenerateExcelFile();
+
+                        using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                        {
+                            var inputOnlineFile = InputFile.FromStream(stream, "data.xlsx");
+                            await botClient.SendDocumentAsync(update.Message.Chat.Id, inputOnlineFile, cancellationToken: cancellationToken);
+                        }
+
+                        System.IO.File.Delete(filePath);
+                        Messages.Clear(); // очищаем список сообщений после экспорта
+                    }
+                    else
+                    {
+                        Messages.Add(update.Message.Text);
+                        var data = new Dictionary<string, string>();
+                        var lines = update.Message.Text.Split('\n');
+                        //foreach (var line in lines)
+                        //{
+                        //    var parts = line.Split(':');
+                        //    if (parts.Length == 2)
+                        //    {
+                        //        data[parts[0].Trim()] = parts[1].Trim();
+                        //    }
+                        //}
+                        //var jsonSerialize = JsonConvert.SerializeObject(data, Formatting.Indented);
                     }
 
-                    System.IO.File.Delete(filePath);
-                    Messages.Clear(); // очищаем список сообщений после экспорта
                 }
-                else
-                {
-                    Messages.Add(update.Message.Text);
-                    var data = new Dictionary<string, string>();
-                    var lines = update.Message.Text.Split('\n');
-                    //foreach (var line in lines)
-                    //{
-                    //    var parts = line.Split(':');
-                    //    if (parts.Length == 2)
-                    //    {
-                    //        data[parts[0].Trim()] = parts[1].Trim();
-                    //    }
-                    //}
-                    //var jsonSerialize = JsonConvert.SerializeObject(data, Formatting.Indented);
-                }
-
             }
+            catch (Exception ex)
+            {
+                await botClient.SendTextMessageAsync(update.Message.Chat.Id, $"Xato:{ex.Message} stacktrace:{ex.StackTrace}", cancellationToken: cancellationToken);
+
+                Console.WriteLine($"An error occurred_catch: {ex.Message}");
+                Console.WriteLine($"\nStackTrace_catch: {ex.StackTrace}");
+                Console.WriteLine($"\nSource_catch: {ex.Source}");
+            }
+            
         }
         private static Task HandleErrorAsync(ITelegramBotClient botClient, Exception exception, CancellationToken cancellationToken)
         {
-            Console.WriteLine($"An error occurred: {exception.Message}");
+            Console.WriteLine($"\nAn error occurred: {exception.Message}");
+            Console.WriteLine($"\nStackTrace: {exception.StackTrace}");
+            Console.WriteLine($"\nSource: {exception.Source}");
             //cts.Cancel();
             return Task.CompletedTask;
         }
