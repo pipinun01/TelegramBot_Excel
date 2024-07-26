@@ -19,7 +19,7 @@ namespace ConsoleApp2
 {
     public class Program
     {
-        private static readonly TelegramBotClient bot = new TelegramBotClient("7279322259:AAGNXvPb8jErmk7gqXV1jwxUDDhhvIl61Ng");
+        private static readonly TelegramBotClient bot = new TelegramBotClient("6403014265:AAHDsNkXlkSR4xFB07HL9uc2Yr1voTX-pHc");
         private static CancellationTokenSource cts = new CancellationTokenSource();
         private static readonly List<string> Messages = new List<string>();
 
@@ -176,8 +176,23 @@ namespace ConsoleApp2
             }
             else
             {
-                data["Манзил"] = string.Empty;
-                data["Вилоят"] = addressParts[0].Trim();
+                if (addressParts.Length == 1)
+                {
+                    data["Манзил"] = string.Empty;
+                    data["Вилоят"] = addressParts[0].Trim();
+                }
+                else if(addressParts.Length == 0)
+                {
+                    data["Манзил"] = string.Empty;
+                    data["Вилоят"] = "";
+                }
+                else
+                {
+
+                    data["Манзил"] = string.Empty;
+                    data["Вилоят"] = addressParts[0].Trim();
+                }
+                
             }
 
             return data;
@@ -185,7 +200,7 @@ namespace ConsoleApp2
 
         private static string ExtractData(string text, string pattern)
         {
-            var match = Regex.Match(text, pattern, RegexOptions.Multiline);
+            var match = Regex.Match(text, pattern, RegexOptions.Multiline |RegexOptions.IgnoreCase);
             return match.Success ? match.Groups[1].Value.Trim() : string.Empty;
         }
     }
