@@ -73,17 +73,9 @@ namespace ConsoleApp2
                     else
                     {
                         Messages.Add(update.Message.Text);
-                        var data = new Dictionary<string, string>();
-                        var lines = update.Message.Text.Split('\n');
-                        //foreach (var line in lines)
-                        //{
-                        //    var parts = line.Split(':');
-                        //    if (parts.Length == 2)
-                        //    {
-                        //        data[parts[0].Trim()] = parts[1].Trim();
-                        //    }
-                        //}
-                        //var jsonSerialize = JsonConvert.SerializeObject(data, Formatting.Indented);
+                        // Преобразование текста в объект
+                        var productInfo = ParseTextToProductInfo(update.Message.Text);
+                        var jsonSerialize = JsonConvert.SerializeObject(productInfo, Formatting.Indented);
                     }
 
                 }
@@ -129,80 +121,94 @@ namespace ConsoleApp2
                 worksheet.Cells[1, 9].Value = "Нархи";
                 worksheet.Cells[1, 10].Value = "УП";
                 worksheet.Cells[1, 11].Value = "Источник";
-
-                int row = 2;
-                foreach (var message in Messages)
-                {
-                    var data = ParseMessage(message);
-                    worksheet.Cells[row, 1].Value = data["Ракам"];
-                    worksheet.Cells[row, 2].Value = data["Махсулот"];
-                    worksheet.Cells[row, 3].Value = data["Мутахасис"];
-                    worksheet.Cells[row, 4].Value = data["Мижоз"];
-                    worksheet.Cells[row, 5].Value = data["Номер"];
-                    worksheet.Cells[row, 6].Value = data["Манзил"];
-                    worksheet.Cells[row, 7].Value = data["Вилоят"];
-                    worksheet.Cells[row, 8].Value = data["Логистика"];
-                    worksheet.Cells[row, 9].Value = data["Нархи"];
-                    worksheet.Cells[row, 10].Value = data["Упаковка"];
-                    worksheet.Cells[row, 11].Value = data["Источник"];
-                    row++;
-                }
-
-                package.Save();
             }
             return filePath;
         }
-        private static Dictionary<string, string> ParseMessage(string message)
+        private static ProductInfo ParseTextToProductInfo(string text)
         {
-            var data = new Dictionary<string, string>
+            var lines = text.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var productInfo = new ProductInfo();
+            string currentKey = null;
+
+            foreach (var line in lines)
             {
-                ["Ракам"] = ExtractData(message, @"^(\d+)"),
-                ["Махсулот"] = ExtractData(message, @"Махсулот:\s*(.*)"),
-                ["Мутахасис"] = ExtractData(message, @"Мутахасис\s*:\s*(.*)"),
-                ["Мижоз"] = ExtractData(message, @"Мижоз\s*:\s*(.*)"),
-                ["Номер"] = ExtractData(message, @"Номер\s*:\s*([\d\s]+)").Replace("\n", "  "),
-                //["Манзил"] = ExtractData(message, @"Манзил\s*:\s*(.*)").Replace("\n", " "),
-                ["Упаковка"] = ExtractData(message, @"Нархи:\s*(\d+)/").Trim(),
-                ["Логистика"] = ExtractData(message, @"Логистика\s*:\s*([\d\s]+)").Replace("\n", "  "),
-                ["Нархи"] = ExtractData(message, @"Нархи:\s*\d+/\s*([^\r\n]+)"),
-                ["Источник"] = ExtractData(message, @"#\s*(.*)")
-            };
-            var address = ExtractData(message, @"Манзил:\s*([^\r\n]+)[\r\n\s]*([^\r\n]*)");
-            var addressParts = address.Split(new[] { '\n', ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (addressParts.Length >= 2)
-            {
-                data["Манзил"] = addressParts[1].Trim();
-                data["Вилоят"] = addressParts[0].Trim();
-            }
-            else
-            {
-                if (addressParts.Length == 1)
+                if (line.Contains(":"))
                 {
-                    data["Манзил"] = string.Empty;
-                    data["Вилоят"] = addressParts[0].Trim();
-                }
-                else if(addressParts.Length == 0)
-                {
-                    data["Манзил"] = string.Empty;
-                    data["Вилоят"] = "";
+                    var parts = line.Split(new[] { ':' }, 2);
+                    currentKey = parts[0].Trim();
+                    var value = parts[1].Trim();
+
+                    switch (currentKey.ToUpper())
+                    {
+                        case "Махсулот":
+                            productInfo.Product = value;
+                            break;
+                        case "Мутахасис":
+                            productInfo.Specialist = value;
+                            break;
+                        case "Мижоз":
+                            productInfo.Client = value;
+                            break;
+                        case "Номер":
+                            productInfo.Numbers.Add(value);
+                            break;
+                        case "Манзил":
+                            productInfo.City = value;
+                            break;
+                        case "Нархи":
+                            productInfo.Package = value;
+                            break;
+                        case "Логистика":
+                            productInfo.Logistics = value;
+                            break;
+                        default:
+                            productInfo.Source += line + " ";
+                            break;
+                    }
                 }
                 else
                 {
-
-                    data["Манзил"] = string.Empty;
-                    data["Вилоят"] = addressParts[0].Trim();
+                    if (currentKey != null)
+                    {
+                        switch (currentKey.ToUpper())
+                        {
+                            case "НОМЕР":
+                                productInfo.Numbers.Add(line.Trim());
+                                break;
+                            case "МАНЗИЛ":
+                                productInfo.Adress += " " + line.Trim();
+                                break;
+                            case "Нархи":
+                                productInfo.Price += " " + line.Trim();
+                                break;
+                            default:
+                                productInfo.Source += line + " ";
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        productInfo.Order += line + " ";
+                    }
                 }
-                
+
             }
-
-            return data;
+            return productInfo;
         }
-
-        private static string ExtractData(string text, string pattern)
-        {
-            var match = Regex.Match(text, pattern, RegexOptions.Multiline |RegexOptions.IgnoreCase);
-            return match.Success ? match.Groups[1].Value.Trim() : string.Empty;
-        }
+    }
+    public class ProductInfo
+    {
+        public string? Order { get; set; }
+        public string? Product { get; set; }
+        public string? Specialist { get; set; }
+        public string? Client { get; set; }
+        public List<string?> Numbers { get; set; } = new List<string?>();
+        public string? City { get; set; }
+        public string? Adress { get; set; }
+        public string? Package { get; set; }
+        public string? Price { get; set; }
+        public string? Logistics { get; set; }
+        public string? Source { get; set; }
     }
 }
 
