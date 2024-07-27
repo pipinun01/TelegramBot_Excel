@@ -19,9 +19,9 @@ namespace ConsoleApp2
 {
     public class Program
     {
-        private static readonly TelegramBotClient bot = new TelegramBotClient("6403014265:AAHDsNkXlkSR4xFB07HL9uc2Yr1voTX-pHc");
+        private static readonly TelegramBotClient bot = new TelegramBotClient("7297731437:AAERIccwtDZnZnV3sNu2gjEpI5ze5Kq77uk");
         private static CancellationTokenSource cts = new CancellationTokenSource();
-        private static readonly List<string> Messages = new List<string>();
+        private static readonly List<ProductInfo> productInfos = new List<ProductInfo>();
 
         static void Main(string[] args)
         {
@@ -60,22 +60,37 @@ namespace ConsoleApp2
                     {
                         await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Данные получены. Нажмите кнопку 'Экспорт', чтобы экспортировать в Excel.", cancellationToken: cancellationToken);
                         var filePath = GenerateExcelFile();
-
-                        using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                        if (System.IO.File.Exists(filePath))
                         {
-                            var inputOnlineFile = InputFile.FromStream(stream, "data.xlsx");
-                            await botClient.SendDocumentAsync(update.Message.Chat.Id, inputOnlineFile, cancellationToken: cancellationToken);
+                            using (var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                            {
+                                var inputOnlineFile = InputFile.FromStream(stream, "data.xlsx");
+                                await botClient.SendDocumentAsync(update.Message.Chat.Id, inputOnlineFile, cancellationToken: cancellationToken);
+                            }
+                        }
+                        else
+                        {
+                            await botClient.SendTextMessageAsync(update.Message.Chat.Id, "Ошибка: файл не был создан.", cancellationToken: cancellationToken);
                         }
 
                         System.IO.File.Delete(filePath);
-                        Messages.Clear(); // очищаем список сообщений после экспорта
+                        productInfos.Clear(); // очищаем список сообщений после экспорта
                     }
                     else
                     {
-                        Messages.Add(update.Message.Text);
                         // Преобразование текста в объект
                         var productInfo = ParseTextToProductInfo(update.Message.Text);
-                        var jsonSerialize = JsonConvert.SerializeObject(productInfo, Formatting.Indented);
+                        if(productInfo.Package != null)
+                        {
+                            if (productInfo.Package.Length > 1 || productInfo.Package.Length == 1)
+                            {
+                                if (productInfo.Package.EndsWith("/"))
+                                {
+                                    productInfo.Package = productInfo.Package.Substring(0, productInfo.Package.Length - 1);
+                                }
+                            }
+                        }
+                        productInfos.Add(productInfo);
                     }
 
                 }
@@ -121,6 +136,31 @@ namespace ConsoleApp2
                 worksheet.Cells[1, 9].Value = "Нархи";
                 worksheet.Cells[1, 10].Value = "УП";
                 worksheet.Cells[1, 11].Value = "Источник";
+
+                // Заполнение данными
+                for (int i = 0; i < productInfos.Count; i++)
+                {
+                    var productInfo = productInfos[i];
+                    worksheet.Cells[i + 2, 1].Value = productInfo.Order;
+                    worksheet.Cells[i + 2, 2].Value = productInfo.Product;
+                    worksheet.Cells[i + 2, 3].Value = productInfo.Specialist;
+                    worksheet.Cells[i + 2, 4].Value = productInfo.Client;
+                    if(productInfo.Numbers.Count > 1 && productInfo.Numbers != null)
+                    {
+                        worksheet.Cells[i + 2, 5].Value = string.Join("  ", productInfo.Numbers);
+                    }
+                    else
+                    {
+                        worksheet.Cells[i + 2, 5].Value = string.Join(" ", productInfo.Numbers);
+                    }
+                    worksheet.Cells[i + 2, 6].Value = productInfo.City;
+                    worksheet.Cells[i + 2, 7].Value = productInfo.Adress;
+                    worksheet.Cells[i + 2, 8].Value = productInfo.Logistics;
+                    worksheet.Cells[i + 2, 9].Value = productInfo.Price;
+                    worksheet.Cells[i + 2, 10].Value = productInfo.Package;
+                    worksheet.Cells[i + 2, 11].Value = productInfo.Source;
+                }
+                package.Save();
             }
             return filePath;
         }
@@ -140,25 +180,25 @@ namespace ConsoleApp2
 
                     switch (currentKey.ToUpper())
                     {
-                        case "Махсулот":
+                        case "МАХСУЛОТ":
                             productInfo.Product = value;
                             break;
-                        case "Мутахасис":
+                        case "МУТАХАСИС":
                             productInfo.Specialist = value;
                             break;
-                        case "Мижоз":
+                        case "МИЖОЗ":
                             productInfo.Client = value;
                             break;
-                        case "Номер":
+                        case "НОМЕР":
                             productInfo.Numbers.Add(value);
                             break;
-                        case "Манзил":
+                        case "МАНЗИЛ":
                             productInfo.City = value;
                             break;
-                        case "Нархи":
+                        case "НАРХИ":
                             productInfo.Package = value;
                             break;
-                        case "Логистика":
+                        case "ЛОГИСТИКА":
                             productInfo.Logistics = value;
                             break;
                         default:
@@ -178,7 +218,7 @@ namespace ConsoleApp2
                             case "МАНЗИЛ":
                                 productInfo.Adress += " " + line.Trim();
                                 break;
-                            case "Нархи":
+                            case "НАРХИ":
                                 productInfo.Price += " " + line.Trim();
                                 break;
                             default:
