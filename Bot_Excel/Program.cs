@@ -130,8 +130,8 @@ namespace ConsoleApp2
                 worksheet.Cells[1, 3].Value = "Мутахасис";
                 worksheet.Cells[1, 4].Value = "Мижоз";
                 worksheet.Cells[1, 5].Value = "Номер";
-                worksheet.Cells[1, 6].Value = "Манзил";
                 worksheet.Cells[1, 7].Value = "Вилоят";
+                worksheet.Cells[1, 6].Value = "Манзил";
                 worksheet.Cells[1, 8].Value = "Логитсика";
                 worksheet.Cells[1, 9].Value = "Нархи";
                 worksheet.Cells[1, 10].Value = "УП";
