@@ -20,7 +20,7 @@ namespace ConsoleApp2
     public class Program
     {
         private static readonly TelegramBotClient bot = new TelegramBotClient("7297731437:AAERIccwtDZnZnV3sNu2gjEpI5ze5Kq77uk");
-        private static CancellationTokenSource cts = new CancellationTokenSource();
+        private static CancellationTokenSource cts = new CancellationTokenSource(); 
         private static readonly List<ProductInfo> productInfos = new List<ProductInfo>();
 
         static void Main(string[] args)
